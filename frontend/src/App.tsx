@@ -14,7 +14,50 @@ const sampleBoard = [
 ];
 
 // Sample words with coordinates [row, col]
-const sampleWords: Word[] = [];
+const sampleWords: Word[] = [
+  {
+    word: 'CAT',
+    coordinates: [[0, 0], [0, 1], [0, 2]], // C-A-T horizontal
+    duration: 3,
+    status: 'pending',
+    definition: 'A small domesticated carnivorous mammal with soft fur, a short snout, and retractile claws.'
+  },
+  {
+    word: 'DOG', 
+    coordinates: [[2, 2], [2, 3], [2, 1]], // D-O-G (O back to D)
+    duration: 4,
+    status: 'pending',
+    definition: 'A domesticated carnivorous mammal that typically has a long snout, an acute sense of smell, and a barking voice.'
+  },
+  {
+    word: 'COW',
+    coordinates: [[0, 0], [1, 0], [2, 0]], // C-O-W vertical
+    duration: 3,
+    status: 'pending',
+    definition: 'A large domesticated ungulate animal with horns, hooves, and udders, kept for milk or meat.'
+  },
+  {
+    word: 'READ',
+    coordinates: [[1, 1], [1, 2], [2, 2], [2, 1]], // R-E-A-D
+    duration: 5,
+    status: 'pending',
+    definition: 'To look at and comprehend the meaning of written or printed matter by mentally interpreting the characters or symbols.'
+  },
+  {
+    word: 'MEAL',
+    coordinates: [[3, 0], [3, 1], [3, 2], [3, 3]], // M-E-A-L horizontal
+    duration: 4,
+    status: 'pending',
+    definition: 'An occasion when food is eaten, or the food that is eaten on such an occasion.'
+  },
+  {
+    word: 'STAR',
+    coordinates: [[0, 3], [0, 2], [0, 1], [1, 1]], // S-T-A-R
+    duration: 5,
+    status: 'pending',
+    definition: 'A fixed luminous point in the night sky that is a large, remote incandescent body like the sun.'
+  }
+];
 
 export default function App() {
   const [words, setWords] = useState<Word[]>(sampleWords);
@@ -159,14 +202,7 @@ export default function App() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <Eye className="w-8 h-8 text-yellow-400" />
-            <h1 className="text-4xl font-bold text-white drop-shadow-lg">WordHawk</h1>
-            <Zap className="w-8 h-8 text-yellow-400" />
-          </div>
-          <p className="text-white/90 text-lg drop-shadow">
-            AI-powered computer vision word hunt solver
-          </p>
+          <img src="/logo.png" alt="GameHawk Logo" className="mx-auto mb-4 h-36" />
         </motion.header>
 
         {/* Main Content */}
@@ -190,6 +226,7 @@ export default function App() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
+            className="lg:col-span-1 flex justify-center items-center h-full"
           >
             <WordList 
               words={words}
