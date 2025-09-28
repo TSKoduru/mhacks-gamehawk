@@ -23,7 +23,8 @@ if __name__ == "__main__":
     send_gcode(ser, "G28")            # Home all axes
     send_gcode(ser, "M18 X Y Z")     # Disable motors
     send_gcode(ser, "M84")           
-
+    send_gcode(ser, f"G1 Z{REST_Z} F1000")
+    
     input(f">> Motors unlocked. Manually move the printhead to the center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
 
     send_gcode(ser, "G92 X0 Y0 Z0")  # Set current position as zero

@@ -122,8 +122,7 @@ if __name__ == "__main__":
 
     print("✅ Printer ready. Connecting to WebSocket...")
 
-    # ws_url = "ws://172.20.10.5:8766"
-    ws_url = "ws://100.64.9.88:8766"
+    ws_url = "ws://172.20.10.4:8766"
     ws = websocket.WebSocketApp(
         ws_url,
         on_message=on_message,
