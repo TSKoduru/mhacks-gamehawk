@@ -2,6 +2,7 @@ import websocket
 import serial
 import time
 from typing import Tuple, List
+import json 
 
 # --------------------------
 # CONFIGURATION
@@ -69,17 +70,51 @@ def play_path(ser, path: List[Tuple[int, int]]):
 
 def on_message(ws, message):
     print(f"Received from server: {message}")
-    if message == "start":
-        # TODO: press start button
-        ws.send("ack")
-    else:
-        # TODO this is json of words list
-        pass
+    try:
+        if message == "start":
+            print(">> Pressing start button")
+            play_path(ser, [START_LOCATION])  # Just go to the start button location
+            ws.send("ack")
+
+        else:
+            data = json.loads(message)
+            results = data.get("words", [])
+            print(f">> Received {len(results)} words to play")
+
+            for word_data in results:
+                coords = word_data.get("coordinates", [])
+                if coords:
+                    print(f">> Playing word: {word_data.get('word')}")
+                    play_path(ser, coords)
+                else:
+                    print(">> Skipping word with no coordinates.")
+
+                time.sleep(0.5)  # Short delay between words
+            ws.send("ack")
+    
+    except Exception as e:
+        print(f"⚠️ Error in on_message: {e}")
 
 def on_close(ws, close_status, close_msg):
     print("Connection closed")
 
 if __name__ == "__main__":
+    print("Connecting to printer...")
+    ser = serial.Serial(PORT, BAUDRATE, timeout=2)
+    time.sleep(2)
+    ser.reset_input_buffer()
+
+    # Home and unlock motors
+    send_gcode(ser, "G28")
+    send_gcode(ser, "M18 X Y Z")
+    send_gcode(ser, "M84")
+    input(f">> Motors unlocked. Manually move the printhead to the center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
+
+    send_gcode(ser, "G92 X0 Y0 Z0")
+    send_gcode(ser, "G90")
+
+    print("✅ Printer ready. Connecting to WebSocket...")
+
     ws_url = "ws://172.20.10.5:8766"
     ws = websocket.WebSocketApp(
         ws_url,
