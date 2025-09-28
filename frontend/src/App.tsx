@@ -14,47 +14,11 @@ const sampleBoard = [
 ];
 
 // Sample words with coordinates [row, col]
-const sampleWords: Word[] = [
-  {
-    word: 'CAT',
-    coordinates: [[0, 0], [0, 1], [0, 2]], // C-A-T horizontal
-    duration: 3,
-    status: 'pending'
-  },
-  {
-    word: 'DOG', 
-    coordinates: [[2, 2], [2, 3], [2, 1]], // D-O-G (O back to D)
-    duration: 4,
-    status: 'pending'
-  },
-  {
-    word: 'COW',
-    coordinates: [[0, 0], [1, 0], [2, 0]], // C-O-W vertical
-    duration: 3,
-    status: 'pending'
-  },
-  {
-    word: 'READ',
-    coordinates: [[1, 1], [1, 2], [2, 2], [2, 1]], // R-E-A-D
-    duration: 5,
-    status: 'pending'
-  },
-  {
-    word: 'MEAL',
-    coordinates: [[3, 0], [3, 1], [3, 2], [3, 3]], // M-E-A-L horizontal
-    duration: 4,
-    status: 'pending'
-  },
-  {
-    word: 'STAR',
-    coordinates: [[0, 3], [0, 2], [0, 1], [1, 1]], // S-T-A-R
-    duration: 5,
-    status: 'pending'
-  }
-];
+const sampleWords: Word[] = [];
 
 export default function App() {
   const [words, setWords] = useState<Word[]>(sampleWords);
+  const [board, setBoard] = useState<string[][]>(sampleBoard);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -111,6 +75,48 @@ export default function App() {
       }, 1000);
     }
   }, [currentWordIndex, isPlaying, isPaused, startNextWord]);
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8765');
+
+    ws.onopen = () => {
+      console.log('Connected to WebSocket server');
+    };
+
+    ws.onmessage = (event) => {
+      console.log('Received:', event.data);
+      // set words
+      try {
+        const data = JSON.parse(event.data);
+        setWords(data.words);
+        setBoard(data.board);
+      } catch (e) {
+        console.error('Error parsing WebSocket message:', e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('Disconnected from WebSocket server');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    // Cleanup socket on unmount
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("Words updated:", words);
+    if (!isPlaying && words.length > 0) {
+      console.log("Starting game");
+      handlePlay();
+    }
+  }, [words]);
+
 
   // Timer effect
   useEffect(() => {
@@ -173,7 +179,7 @@ export default function App() {
             transition={{ delay: 0.2 }}
           >
             <WordHuntBoard 
-              board={sampleBoard}
+              board={board}
               highlightedTiles={highlightedTiles}
               currentWord={currentWordIndex >= 0 ? words[currentWordIndex].word : undefined}
             />

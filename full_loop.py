@@ -83,6 +83,30 @@ def extract_board_letters(img, grid_size=4):
 
     return letters
 
+from websocket_server import WebsocketServer
+import threading
+import json
+
+server = WebsocketServer(host="0.0.0.0", port=8765)
+clients = []
+
+def new_client(client, server):
+    print(f"New client connected: {client['id']}")
+    clients.append(client)
+
+def client_left(client, server):
+    print(f"Client disconnected: {client['id']}")
+    clients.remove(client)
+
+def send_message(message):
+    for client in clients:
+        server.send_message(client, json.dumps(message))
+
+server.set_fn_new_client(new_client)
+server.set_fn_client_left(client_left)
+
+threading.Thread(target=server.run_forever, daemon=True).start()
+
 def main():
     print("Press space bar to start game...")
     while True:
@@ -115,7 +139,11 @@ def main():
     # TODO
 
     # send grid, words, coordinates, and times to frontend via socket
-    # TODO
+    message = {
+        "board": grid,
+        "words": results
+    }
+    send_message(message)
 
 
 if __name__ == "__main__":

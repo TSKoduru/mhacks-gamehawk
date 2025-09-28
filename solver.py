@@ -71,7 +71,7 @@ def find_words(board: List[List[str]], trie: dict) -> List[WordResult]:
             paths.update(pset)
 
     return [
-        {"word": word, "path": paths[word]}
+        {"word": word, "coordinates": paths[word], "duration": max(3, len(word)), "status": "pending"}
         for word in sorted(results, key=lambda w: (-len(w), w))
     ]
 
@@ -79,18 +79,20 @@ def load_trie(filepath: str) -> dict:
     with open(filepath, "rb") as f:
         return pickle.load(f)
 
-board = [
-    ['t', 'h', 'i', 's'],
-    ['w', 'a', 't', 's'],
-    ['o', 'a', 'h', 'g'],
-    ['f', 'g', 'd', 't']
-]
+if __name__ == "__main__":
+    board = [
+        ['t', 'h', 'i', 's'],
+        ['w', 'a', 't', 's'],
+        ['o', 'a', 'h', 'g'],
+        ['f', 'g', 'd', 't']
+    ]
 
-trie = load_trie("./trie.pkl")
+    trie = load_trie("./trie.pkl")
 
-import time
-start = time.perf_counter()
-results = find_words(board, trie)
-end = time.perf_counter()
+    import time
+    start = time.perf_counter()
+    results = find_words(board, trie)
+    end = time.perf_counter()
 
-print(f"Found {len(results)} words in {end - start:.4f} seconds")
+    print(f"Found {len(results)} words in {end - start:.4f} seconds")
+    print(results[:10])
