@@ -2,7 +2,7 @@ from websocket_server import WebsocketServer
 import threading
 import json
 
-server = WebsocketServer(host="0.0.0.0", port=8766)
+server = WebsocketServer(host="0.0.0.0", port=8765)
 clients = []
 
 def new_client(client, server):
@@ -85,6 +85,6 @@ def message_received(client, server, message):
     ready = True
 
 while True:
-    while not ready:
-        pass
+    # wait for key press
+    input("Press Enter to send message...")
     send_message(message)

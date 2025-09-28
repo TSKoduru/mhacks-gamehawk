@@ -15,48 +15,48 @@ const sampleBoard = [
 
 // Sample words with coordinates [row, col]
 const sampleWords: Word[] = [
-  {
-    word: 'CAT',
-    coordinates: [[0, 0], [0, 1], [0, 2]], // C-A-T horizontal
-    duration: 3,
-    status: 'pending',
-    definition: 'A small domesticated carnivorous mammal with soft fur, a short snout, and retractile claws.'
-  },
-  {
-    word: 'DOG', 
-    coordinates: [[2, 2], [2, 3], [2, 1]], // D-O-G (O back to D)
-    duration: 4,
-    status: 'pending',
-    definition: 'A domesticated carnivorous mammal that typically has a long snout, an acute sense of smell, and a barking voice.'
-  },
-  {
-    word: 'COW',
-    coordinates: [[0, 0], [1, 0], [2, 0]], // C-O-W vertical
-    duration: 3,
-    status: 'pending',
-    definition: 'A large domesticated ungulate animal with horns, hooves, and udders, kept for milk or meat.'
-  },
-  {
-    word: 'READ',
-    coordinates: [[1, 1], [1, 2], [2, 2], [2, 1]], // R-E-A-D
-    duration: 5,
-    status: 'pending',
-    definition: 'To look at and comprehend the meaning of written or printed matter by mentally interpreting the characters or symbols.'
-  },
-  {
-    word: 'MEAL',
-    coordinates: [[3, 0], [3, 1], [3, 2], [3, 3]], // M-E-A-L horizontal
-    duration: 4,
-    status: 'pending',
-    definition: 'An occasion when food is eaten, or the food that is eaten on such an occasion.'
-  },
-  {
-    word: 'STAR',
-    coordinates: [[0, 3], [0, 2], [0, 1], [1, 1]], // S-T-A-R
-    duration: 5,
-    status: 'pending',
-    definition: 'A fixed luminous point in the night sky that is a large, remote incandescent body like the sun.'
-  }
+  // {
+  //   word: 'CAT',
+  //   coordinates: [[0, 0], [0, 1], [0, 2]], // C-A-T horizontal
+  //   duration: 3,
+  //   status: 'pending',
+  //   definition: 'A small domesticated carnivorous mammal with soft fur, a short snout, and retractile claws.'
+  // },
+  // {
+  //   word: 'DOG', 
+  //   coordinates: [[2, 2], [2, 3], [2, 1]], // D-O-G (O back to D)
+  //   duration: 4,
+  //   status: 'pending',
+  //   definition: 'A domesticated carnivorous mammal that typically has a long snout, an acute sense of smell, and a barking voice.'
+  // },
+  // {
+  //   word: 'COW',
+  //   coordinates: [[0, 0], [1, 0], [2, 0]], // C-O-W vertical
+  //   duration: 3,
+  //   status: 'pending',
+  //   definition: 'A large domesticated ungulate animal with horns, hooves, and udders, kept for milk or meat.'
+  // },
+  // {
+  //   word: 'READ',
+  //   coordinates: [[1, 1], [1, 2], [2, 2], [2, 1]], // R-E-A-D
+  //   duration: 5,
+  //   status: 'pending',
+  //   definition: 'To look at and comprehend the meaning of written or printed matter by mentally interpreting the characters or symbols.'
+  // },
+  // {
+  //   word: 'MEAL',
+  //   coordinates: [[3, 0], [3, 1], [3, 2], [3, 3]], // M-E-A-L horizontal
+  //   duration: 4,
+  //   status: 'pending',
+  //   definition: 'An occasion when food is eaten, or the food that is eaten on such an occasion.'
+  // },
+  // {
+  //   word: 'STAR',
+  //   coordinates: [[0, 3], [0, 2], [0, 1], [1, 1]], // S-T-A-R
+  //   duration: 5,
+  //   status: 'pending',
+  //   definition: 'A fixed luminous point in the night sky that is a large, remote incandescent body like the sun.'
+  // }
 ];
 
 export default function App() {
@@ -131,8 +131,51 @@ export default function App() {
       // set words
       try {
         const data = JSON.parse(event.data);
+        if (!data.words || !data.board) {
+          console.error('Invalid data format from WebSocket:', data);
+          return;
+        }
         setWords(data.words);
         setBoard(data.board);
+        // send request to gemini for definitions
+        const wordsToDefine = data.words.map((w: any) => w.word);
+        fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+          {
+            method: 'POST', 
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': import.meta.env.VITE_GEMINI_API_KEY
+            },
+            body: JSON.stringify({
+              "contents": [
+                {
+                  "parts": [
+                    {
+                      "text": `Return only raw JSON. No markdown, no triple backticks, no formatting. Provide a brief definition for each of the following words in this format: {"words":[{"word":"WORD","definition":"..."}]} — words: ${wordsToDefine.join(', ')}`
+                    }
+                  ]
+                }
+              ],
+              "generationConfig": {
+                "thinkingConfig": {
+                  "thinkingBudget": 0
+                }
+              }
+            })}).then(res => res.json()).then(res => {
+              console.log('Gemini response:', res);
+              if (res.candidates && res.candidates.length > 0) {
+                try {
+                  const definitions = JSON.parse(res.candidates[0].content.parts[0].text).words;
+                  console.log('Parsed definitions:', definitions);
+                  setWords((prevWords) => prevWords.map((word) => {
+                    const defObj = definitions.find((d: any) => d.word.toLowerCase() === word.word.toLowerCase());
+                    return defObj ? { ...word, definition: defObj.definition } : word;
+                  }));
+                } catch (e) {
+                  console.error('Error parsing definitions JSON:', e);
+                }
+              }
+          }).catch(err => console.error('Error fetching definitions:', err));
       } catch (e) {
         console.error('Error parsing WebSocket message:', e);
       }
@@ -186,12 +229,6 @@ export default function App() {
       startNextWord();
     }
   };
-
-  const handlePause = () => {
-    setIsPaused(true);
-  };
-
-  const completedWords = words.filter(word => word.status === 'completed').length;
 
   return (
     <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
