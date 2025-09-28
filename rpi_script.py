@@ -14,9 +14,9 @@ PORT = "/dev/ttyUSB0"
 BAUDRATE = 115200
 CELL_SIZE = 13.6  # mm
 PRESS_Z = 0
-REST_Z = 1.7
+REST_Z = 3
 DELAY = 0.25
-START_LOCATION = (1.5, 1.5)
+START_LOCATION = (2.5, 1.5)
 
 # --------------------------
 # WebSocket debug trace
@@ -47,14 +47,14 @@ def play_path(ser, path: List[Tuple[int, int]]):
     first_row, first_col = path[0]
     x0 = first_col * CELL_SIZE
     y0 = (max_row - first_row) * CELL_SIZE
-    send_gcode(ser, f"G1 X{x0:.2f} Y{y0:.2f} F6000")
+    send_gcode(ser, f"G1 X{x0:.2f} Y{y0:.2f} F8000")
 
     send_gcode(ser, f"G1 Z{PRESS_Z} F2000")
 
     for row, col in path[1:]:
         x = col * CELL_SIZE
         y = (max_row - row) * CELL_SIZE
-        send_gcode(ser, f"G1 X{x:.2f} Y{y:.2f} F6000")
+        send_gcode(ser, f"G1 X{x:.2f} Y{y:.2f} F8000")
 
     send_gcode(ser, f"G1 Z{REST_Z} F2000")
     print("✅ Path playback complete.")
@@ -98,6 +98,11 @@ def on_message(ws, message):
                     time.sleep(0.5)
                 else:
                     print(">> Skipping word with no coordinates.")
+            
+            # Send to home
+            send_gcode(ser, f"G1 X0 F2000")
+            send_gcode(ser, f"G1 Y0 F2000")
+            send_gcode(ser, f"G1 Z{REST_Z} F2000")
             ws.send("ack")
 
     except Exception as e:

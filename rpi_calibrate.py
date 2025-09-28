@@ -20,10 +20,13 @@ if __name__ == "__main__":
     time.sleep(2)
     ser.reset_input_buffer()
 
+    send_gcode(ser, f"G1 Z{5*REST_Z} F1000")
+    input(f">> Press enter when Ipad removed")
+
     send_gcode(ser, "G28")            # Home all axes
     send_gcode(ser, "M18 X Y Z")     # Disable motors
     send_gcode(ser, "M84")           
-    send_gcode(ser, f"G1 Z{5*REST_Z} F1000")
+    send_gcode(ser, f"G1 Z{15*REST_Z} F1000")
     
     input(f">> Motors unlocked. Manually move the printhead to the center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
 
