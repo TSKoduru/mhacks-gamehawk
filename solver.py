@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 Position = Tuple[int, int]
 WordResult = Dict[str, List[Position]]
+SOLVER_NUMWORDS_LIMIT = 30
 
 def get_neighbors(row: int, col: int, num_rows=4, num_cols=4) -> List[Position]:
     return [
@@ -73,7 +74,7 @@ def find_words(board: List[List[str]], trie: dict) -> List[WordResult]:
     return [
         {"word": word, "coordinates": paths[word], "duration": max(3, len(word)), "status": "pending"}
         for word in sorted(results, key=lambda w: (-len(w), w))
-    ]
+    ][:min(len(results), SOLVER_NUMWORDS_LIMIT)] # limit to top 30 results for speed, change as needed
 
 def load_trie(filepath: str) -> dict:
     with open(filepath, "rb") as f:
