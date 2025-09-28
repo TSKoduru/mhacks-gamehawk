@@ -9,6 +9,8 @@ import easyocr
 from solver import load_trie, find_words
 ready= False
 
+# Define trie up here so everything can use it and its only loaded once
+trie = load_trie("./trie.pkl")
 
 def find_lonelyscreen_window():
     windows = gw.getWindowsWithTitle('LonelyScreen')
@@ -135,7 +137,6 @@ threading.Thread(target=server.run_forever, daemon=True).start()
 
 def main():
     global ready
-    trie = load_trie("./trie.pkl")
     print("Press space bar to start game...")
     while True:
         if cv2.waitKey(1) & 0xFF == ord(' '):
