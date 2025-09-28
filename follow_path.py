@@ -7,10 +7,10 @@ from typing import Tuple, List
 # --------------------------
 PORT = "COM8"               # Change this to your actual port
 BAUDRATE = 115200
-CELL_SIZE = 13.6  #12.15           # mm
+CELL_SIZE = 13.6 # 12.15           # mm
 PRESS_Z = 0                 # How far down to press relative to REST_Z
 REST_Z = 3                  # Resting Z height above phone, treated as Z=0 after G92
-DELAY = 0.3                 # seconds between actions 
+DELAY = 0.3                 # seconds between acti  ons 
 
 # --------------------------
 # G-code helpers
@@ -64,30 +64,23 @@ def play_path(ser, path: List[Tuple[int, int]]):
 # Main logic
 # --------------------------
 def main():
-    print("Connecting to printer...")
     with serial.Serial(PORT, BAUDRATE, timeout=2) as ser:
         time.sleep(2)  # Wait for printer to initialize
 
-        # Clear startup messages
-        ser.reset_input_buffer()
+        solver_results = [{'word': 'reinstator', 'path': [(0, 1), (1, 0), (2, 1), (3, 2), (2, 3), (1, 2), (1, 1), (2, 0), (3, 0), (3, 1)]}, {'word': 'castrator', 'path': [(2, 2), (3, 3), (2, 3), (1, 2), (0, 1), (1, 1), (2, 0), (3, 0), (3, 1)]}, {'word': 'veratrins', 'path': [(0, 0), (1, 0), (0, 1), (1, 1), (2, 0), (3, 1), (2, 1), (3, 2), (2, 3)]}, {'word': 'castrate', 'path': [(2, 2), (3, 3), (2, 3), (1, 2), (0, 1), (1, 1), (2, 0), (1, 0)]}, {'word': 'castrati', 'path': [(2, 2), (3, 3), (2, 3), (1, 2), (0, 1), (1, 1), (2, 0), (2, 1)]}, {'word': 'castrato', 'path': [(2, 2), (3, 3), (2, 3), (1, 2), (0, 1), (1, 1), (2, 0), (3, 0)]}, {'word': 'nitrator', 'path': [(3, 2), (2, 1), (1, 2), (0, 1), (1, 1), (2, 0), (3, 0), (3, 1)]}, {'word': 'sanitate', 'path': [(2, 3), (3, 3), (3, 2), (2, 1), (1, 2), (1, 1), (2, 0), (1, 0)]}, {'word': 'scawtite', 'path': [(2, 3), (2, 2), (1, 1), (0, 2), (1, 2), (2, 1), (2, 0), (1, 0)]}, {'word': 'veratrin', 'path': [(0, 0), (1, 0), (0, 1), (1, 1), (2, 0), (3, 1), (2, 1), (3, 2)]}]
 
-        # Home all axes to start from a known state
-        send_gcode(ser, "G28")
-
-        # Unlock motors for manual positioning
-        send_gcode(ser, "M18 X Y Z")
-        send_gcode(ser, "M84")
-
-        input(f">> Motors unlocked. Manually move the printhead to center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
-
-        # Set current position as X=0, Y=0, Z=0 (where Z=0 is your resting height)
-        send_gcode(ser, "G92 X0 Y0 Z0")
-
-        send_gcode(ser, "G90")  # Use absolute positioning for all future moves
-
-        # Removed the old grid tapping loop
-
-        print("✅ Ready to play word paths.")
+        for result in solver_results:
+            word = result["word"]
+            path = result["path"]
+            print(f"Playing word: {word}, path: {path}")
+            play_path(ser, path)
+            time.sleep(0.5)  # small delay between words to avoid overlap
+        
+        exit(0)
 
 if __name__ == "__main__":
     main()
+
+    #with serial.Serial(PORT, BAUDRATE, timeout=2) as ser:
+        #time.sleep(2)  # Wait for printer to initialize
+        #send_gcode(ser, f"G1 Z{0} F1000")
