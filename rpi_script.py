@@ -120,19 +120,10 @@ if __name__ == "__main__":
     time.sleep(2)
     ser.reset_input_buffer()
 
-    send_gcode(ser, "G28")
-    send_gcode(ser, "M18 X Y Z")
-    send_gcode(ser, "M84")
-
-    input(f">> Motors unlocked. Manually move the printhead to the center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
-
-    send_gcode(ser, "G92 X0 Y0 Z0")
-    send_gcode(ser, "G90")
-    send_gcode(ser, f"G1 Z{REST_Z} F1000")
-
     print("✅ Printer ready. Connecting to WebSocket...")
 
-    ws_url = "ws://172.20.10.5:8766"
+    # ws_url = "ws://172.20.10.5:8766"
+    ws_url = "ws://100.64.9.88:8766"
     ws = websocket.WebSocketApp(
         ws_url,
         on_message=on_message,
