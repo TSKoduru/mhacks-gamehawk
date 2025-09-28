@@ -27,10 +27,11 @@ def capture_fullscreen():
         img_np = np.array(img)
         img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
         # crop to 1054, 1504 (x), 655, 1108 (y)
-        # img_bgr = img_bgr[150:150+1108, 105:105+655]
+        img_bgr = img_bgr[896:150+1108, 1062:150+1264]
         return img_bgr
     
 window = find_lonelyscreen_window()
 
 activate_and_maximize_window(window)
 img = capture_fullscreen()
+cv2.imwrite("screenshot2.jpg", img)

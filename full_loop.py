@@ -4,6 +4,10 @@ import cv2
 import numpy as np
 import time
 import easyocr
+import keyboard 
+import win32gui
+import win32con
+import win32com.client
 
 # import solver logic
 from solver import load_trie, find_words
@@ -20,13 +24,21 @@ def find_lonelyscreen_window():
     return windows[0]
 
 def activate_and_maximize_window(window):
-    if window.isMinimized:
-        window.restore()
-    window.activate()
+    hwnd = window._hWnd  # get native window handle
+
+    # Restore if minimized
+    if win32gui.IsIconic(hwnd):
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        time.sleep(0.2)
+
+    # Force foreground
+    shell = win32com.client.Dispatch("WScript.Shell")
+    shell.SendKeys('%')  # Send ALT key to allow SetForegroundWindow
+    win32gui.SetForegroundWindow(hwnd)
+
+    # Maximize
+    win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
     time.sleep(0.5)
-    # Maximize window
-    window.maximize()
-    time.sleep(1)  # Wait for maximize animation
 
 def capture_fullscreen():
     with mss.mss() as sct:
@@ -35,7 +47,7 @@ def capture_fullscreen():
         img_np = np.array(img)
         img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
         # crop to 1054, 1504 (x), 655, 1108 (y)
-        img_bgr = img_bgr[877:1203, 1068:1398]
+        img_bgr = img_bgr[896:150+1108, 1062:150+1264]
         return img_bgr
 
 reader = easyocr.Reader(['en'], gpu=False)
@@ -77,8 +89,8 @@ def extract_board_letters(img, grid_size=4):
             cell = cv2.resize(cell, (200, 200), interpolation=cv2.INTER_LINEAR)
             border = 20
             cell = cell[border:-border, border:-border]
-            cv2.imshow("cell", cell)
-            cv2.waitKey(0)
+            # cv2.imshow("cell", cell)
+            # cv2.waitKey(0)
             
             results = reader.readtext(cell)
             char = clean_letter(results[0][1] if results else "")
@@ -113,12 +125,35 @@ def client_left2(client, server):
     clients2.remove(client)
 
 def send_message(message):
+    disconnected = []
     for client in clients:
-        server.send_message(client, json.dumps(message))
+        try:
+            server.send_message(client, json.dumps(message))
+        except Exception as e:
+            print(f"Error sending message to client {client['id']}: {e}")
+            disconnected.append(client)
+    
+    for client in disconnected:
+        try:
+            clients.remove(client)
+        except ValueError:
+            pass
 
 def send_message2(message):
+    disconnected = []
     for client in clients2:
-        server.send_message(client, json.dumps(message))
+        try:
+            server.send_message(client, json.dumps(message))
+        except Exception as e:
+            print(f"Error sending message to client {client['id']}: {e}")
+            disconnected.append(client)
+    
+    # Remove disconnected clients
+    for client in disconnected:
+        try:
+            clients2.remove(client)
+        except ValueError:
+            pass
 
 def message_received(client, server, message):
     print(f"Received message from client")
@@ -134,37 +169,46 @@ server2.set_fn_new_client(new_client2)
 server2.set_fn_message_received(message_received)
 
 threading.Thread(target=server.run_forever, daemon=True).start()
+threading.Thread(target=server2.run_forever, daemon=True).start()
+
 
 def main():
     global ready
+    print("in main")
+    while not clients2:
+        pass
     print("Press space bar to start game...")
-    while True:
-        if cv2.waitKey(1) & 0xFF == ord(' '):
-            break
+    
+    # Wait for spacebar press before continuing
+    keyboard.wait("space")
 
     # send socket message to rpi 
-    # message = "start"
-    # send_message2(message)
+    message = "start"
+    send_message2(message)
 
     # receive ack from rpi 
-    # while(not ready):
-    #     pass
+    while(not ready):
+        pass
 
+    # allow time to hit the start
+    time.sleep(3)
+    
     window = find_lonelyscreen_window()
     if window is None:
         return
 
     activate_and_maximize_window(window)
     img = capture_fullscreen()
-
     grid = extract_board_letters(img)
 
     # ---------------------------
     # find words and coordinates and estimate times
     # ---------------------------
-    grid = [[ch.lower() for ch in row] for row in grid] # algo needs lowercase
+    grid = [[ch.lower() for ch in row] for row in grid]  # algo needs lowercase
     results = find_words(grid, trie)
-
+    print(grid)
+    print(f"Found {len(results)} words")
+    print(results[:10])
     # send words, coordinates to rpi via socket
     message = {
         "words": results
@@ -172,11 +216,11 @@ def main():
     send_message2(message)
 
     # send grid, words, coordinates, and times to frontend via socket
-    #message = {
-    #    "board": grid,
-    #    "words": results
-    #}
-    #send_message(message)
+    # message = {
+    #     "board": grid,
+    #     "words": results
+    # }
+    # send_message(message)
 
 
 if __name__ == "__main__":

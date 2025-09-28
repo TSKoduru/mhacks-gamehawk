@@ -60,8 +60,8 @@ def extract_board_letters(image_path, grid_size=4):
             # crop border
             border = 20
             cell = cell[border:-border, border:-border]
-            cv2.imshow("cell", cell)
-            cv2.waitKey(0)
+            # cv2.imshow("cell", cell)
+            # cv2.waitKey(0)
             
             results = reader.readtext(cell)
             char = clean_letter(results[0][1] if results else "")
