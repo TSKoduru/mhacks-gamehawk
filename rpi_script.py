@@ -14,9 +14,9 @@ PORT = "/dev/ttyUSB0"
 BAUDRATE = 115200
 CELL_SIZE = 13.6  # mm
 PRESS_Z = 0
-REST_Z = 3
-DELAY = 0.1
-START_LOCATION = (2, 2)
+REST_Z = 1.7
+DELAY = 0.25
+START_LOCATION = (1.5, 1.5)
 
 # --------------------------
 # WebSocket debug trace
@@ -81,7 +81,7 @@ signal.signal(signal.SIGINT, exit_gracefully)
 def on_message(ws, message):
     print(f"Received from server: {message}")
     try:
-        if message == "start":
+        if json.loads(message) == "start":
             print(">> Pressing start button")
             play_path(ser, [START_LOCATION])
             ws.send("ack")
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     print("✅ Printer ready. Connecting to WebSocket...")
 
-    ws_url = "ws://172.20.10.4:8766"
+    ws_url = "ws://172.20.10.8:8766"
     ws = websocket.WebSocketApp(
         ws_url,
         on_message=on_message,
