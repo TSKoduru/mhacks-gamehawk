@@ -2,19 +2,26 @@ import websocket
 import serial
 import time
 from typing import Tuple, List
-import json 
+import json
+import signal
+import sys
 
 # --------------------------
 # CONFIGURATION
 # --------------------------
 
-PORT = "/dev/ttyUSB0"               # Change this to your actual port
+PORT = "/dev/ttyUSB0"
 BAUDRATE = 115200
-CELL_SIZE = 13.6  #12.15           # mm
-PRESS_Z = 0                 # How far down to press relative to REST_Z
-REST_Z = 3                  # Resting Z height above phone, treated as Z=0 after G92
-DELAY = 0.3   
-START_LOCATION = (2, 2) # Approximate location of green start button
+CELL_SIZE = 13.6  # mm
+PRESS_Z = 0
+REST_Z = 3
+DELAY = 0.3
+START_LOCATION = (2, 2)
+
+# --------------------------
+# WebSocket debug trace
+# --------------------------
+websocket.enableTrace(True)
 
 # --------------------------
 # G-code helpers
@@ -28,54 +35,56 @@ def send_gcode(ser, command: str, wait: float = DELAY):
         print(f"< {line}")
 
 def play_path(ser, path: List[Tuple[int, int]]):
-    """
-    Takes a list of (row, col) coordinates from the solver (top-left origin),
-    converts them to printer coordinates (bottom-left origin),
-    moves to the first point, presses down,
-    then traces the entire path,
-    and lifts up at the end.
-    """
     if not path:
         print(">> Empty path, nothing to play.")
         return
 
     send_gcode(ser, f"G1 Z{REST_Z} F1000")
+    max_row = 3  # For 4x4 grid
 
-    max_row = 3  # For a 4x4 grid, rows 0 to 3
     print(f">> Playing path with {len(path)} points...")
 
-    # Move to the first point at rest height
     first_row, first_col = path[0]
     x0 = first_col * CELL_SIZE
     y0 = (max_row - first_row) * CELL_SIZE
     send_gcode(ser, f"G1 X{x0:.2f} Y{y0:.2f} F3000")
 
-    # Press down once
     send_gcode(ser, f"G1 Z{PRESS_Z} F1000")
 
-    # Trace the rest of the points while pressed down
     for row, col in path[1:]:
         x = col * CELL_SIZE
         y = (max_row - row) * CELL_SIZE
         send_gcode(ser, f"G1 X{x:.2f} Y{y:.2f} F3000")
 
-    # Lift up at the end
     send_gcode(ser, f"G1 Z{REST_Z} F1000")
-
     print("✅ Path playback complete.")
 
 # --------------------------
-# Main logic
+# Graceful shutdown handler
 # --------------------------
+def exit_gracefully(sig, frame):
+    print("\n🛑 Exiting gracefully...")
+    try:
+        if ws:
+            ws.close()
+        if ser:
+            ser.close()
+    except:
+        pass
+    sys.exit(0)
 
+signal.signal(signal.SIGINT, exit_gracefully)
+
+# --------------------------
+# WebSocket callbacks
+# --------------------------
 def on_message(ws, message):
     print(f"Received from server: {message}")
     try:
         if message == "start":
             print(">> Pressing start button")
-            play_path(ser, [START_LOCATION])  # Just go to the start button location
+            play_path(ser, [START_LOCATION])
             ws.send("ack")
-
         else:
             data = json.loads(message)
             results = data.get("words", [])
@@ -86,40 +95,48 @@ def on_message(ws, message):
                 if coords:
                     print(f">> Playing word: {word_data.get('word')}")
                     play_path(ser, coords)
+                    time.sleep(0.5)
                 else:
                     print(">> Skipping word with no coordinates.")
-
-                time.sleep(0.5)  # Short delay between words
             ws.send("ack")
-    
+
     except Exception as e:
         print(f"⚠️ Error in on_message: {e}")
 
 def on_close(ws, close_status, close_msg):
-    print("Connection closed")
+    print(f"❌ WebSocket closed. Status: {close_status}, Message: {close_msg}")
+    exit_gracefully(None, None)
 
+def on_error(ws, error):
+    print(f"⚠️ WebSocket error: {error}")
+    exit_gracefully(None, None)
+
+# --------------------------
+# Main
+# --------------------------
 if __name__ == "__main__":
     print("Connecting to printer...")
     ser = serial.Serial(PORT, BAUDRATE, timeout=2)
     time.sleep(2)
     ser.reset_input_buffer()
 
-    # Home and unlock motors
     send_gcode(ser, "G28")
     send_gcode(ser, "M18 X Y Z")
     send_gcode(ser, "M84")
+
     input(f">> Motors unlocked. Manually move the printhead to the center of the top-left cell at resting height {REST_Z}mm, then press Enter to set home...")
 
     send_gcode(ser, "G92 X0 Y0 Z0")
     send_gcode(ser, "G90")
     send_gcode(ser, f"G1 Z{REST_Z} F1000")
-    
+
     print("✅ Printer ready. Connecting to WebSocket...")
 
     ws_url = "ws://172.20.10.5:8766"
     ws = websocket.WebSocketApp(
         ws_url,
         on_message=on_message,
-        on_close=on_close
+        on_close=on_close,
+        on_error=on_error
     )
     ws.run_forever()
