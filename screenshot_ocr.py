@@ -1,5 +1,4 @@
 import cv2
-import pytesseract
 import easyocr
 
 import numpy as np
@@ -72,7 +71,7 @@ def extract_board_letters(image_path, grid_size=4):
     return letters
 
 if __name__ == "__main__":
-    image_path = "image1.jpg"
+    image_path = "usb_cam_capture.jpg"
     grid = extract_board_letters(image_path)
     for row in grid:
         print(" ".join(row))
