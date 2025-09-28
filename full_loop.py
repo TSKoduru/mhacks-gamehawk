@@ -35,7 +35,7 @@ def capture_fullscreen():
         img_np = np.array(img)
         img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
         # crop to 1054, 1504 (x), 655, 1108 (y)
-        img_bgr = img_bgr[150:150+1108, 105:105+655]
+        img_bgr = img_bgr[877:1203, 1068:1398]
         return img_bgr
 
 reader = easyocr.Reader(['en'], gpu=False)
@@ -92,7 +92,7 @@ import threading
 import json
 
 server = WebsocketServer(host="0.0.0.0", port=8765)
-server2 = WebsocketServer(host="0.0.0.0", port=8764)
+server2 = WebsocketServer(host="0.0.0.0", port=8766)
 clients = []
 clients2 = []
 
@@ -143,12 +143,12 @@ def main():
             break
 
     # send socket message to rpi 
-    message = "start"
-    send_message2(message)
+    # message = "start"
+    # send_message2(message)
 
     # receive ack from rpi 
-    while(not ready):
-        pass
+    # while(not ready):
+    #     pass
 
     window = find_lonelyscreen_window()
     if window is None:
@@ -172,11 +172,11 @@ def main():
     send_message2(message)
 
     # send grid, words, coordinates, and times to frontend via socket
-    message = {
-        "board": grid,
-        "words": results
-    }
-    send_message(message)
+    #message = {
+    #    "board": grid,
+    #    "words": results
+    #}
+    #send_message(message)
 
 
 if __name__ == "__main__":
