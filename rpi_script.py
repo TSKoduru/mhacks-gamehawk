@@ -112,7 +112,8 @@ if __name__ == "__main__":
 
     send_gcode(ser, "G92 X0 Y0 Z0")
     send_gcode(ser, "G90")
-
+    send_gcode(ser, f"G1 Z{REST_Z} F1000")
+    
     print("✅ Printer ready. Connecting to WebSocket...")
 
     ws_url = "ws://172.20.10.5:8766"
