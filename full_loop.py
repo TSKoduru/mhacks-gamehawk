@@ -135,6 +135,7 @@ threading.Thread(target=server.run_forever, daemon=True).start()
 
 def main():
     global ready
+    trie = load_trie("./trie.pkl")
     print("Press space bar to start game...")
     while True:
         if cv2.waitKey(1) & 0xFF == ord(' '):
@@ -161,7 +162,6 @@ def main():
     # find words and coordinates and estimate times
     # ---------------------------
     grid = [[ch.lower() for ch in row] for row in grid] # algo needs lowercase
-    trie = load_trie("./trie.pkl")
     results = find_words(grid, trie)
 
     # send words, coordinates to rpi via socket
