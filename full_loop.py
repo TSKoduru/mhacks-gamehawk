@@ -7,6 +7,8 @@ import easyocr
 
 # import solver logic
 from solver import load_trie, find_words
+ready= False
+
 
 def find_lonelyscreen_window():
     windows = gw.getWindowsWithTitle('LonelyScreen')
@@ -88,36 +90,63 @@ import threading
 import json
 
 server = WebsocketServer(host="0.0.0.0", port=8765)
+server2 = WebsocketServer(host="0.0.0.0", port=8764)
 clients = []
+clients2 = []
 
 def new_client(client, server):
     print(f"New client connected: {client['id']}")
     clients.append(client)
 
+def new_client2(client, server):
+    print(f"New client connected: {client['id']}")
+    clients2.append(client)
+
 def client_left(client, server):
     print(f"Client disconnected: {client['id']}")
     clients.remove(client)
+
+def client_left2(client, server):
+    print(f"Client disconnected: {client['id']}")
+    clients2.remove(client)
 
 def send_message(message):
     for client in clients:
         server.send_message(client, json.dumps(message))
 
+def send_message2(message):
+    for client in clients2:
+        server.send_message(client, json.dumps(message))
+
+def message_received(client, server, message):
+    print(f"Received message from client")
+    global ready 
+    ready = True
+
 server.set_fn_new_client(new_client)
 server.set_fn_client_left(client_left)
+
+server2.set_fn_new_client(new_client2)
+server2.set_fn_new_client(new_client2)
+
+server2.set_fn_message_received(message_received)
 
 threading.Thread(target=server.run_forever, daemon=True).start()
 
 def main():
+    global ready
     print("Press space bar to start game...")
     while True:
         if cv2.waitKey(1) & 0xFF == ord(' '):
             break
 
     # send socket message to rpi 
-    # TODO
+    message = "start"
+    send_message2(message)
 
     # receive ack from rpi 
-    # TODO
+    while(not ready):
+        pass
 
     window = find_lonelyscreen_window()
     if window is None:
@@ -135,8 +164,11 @@ def main():
     trie = load_trie("./trie.pkl")
     results = find_words(grid, trie)
 
-    # send grid, words, coordinates to rpi via socket
-    # TODO
+    # send words, coordinates to rpi via socket
+    message = {
+        "words": results
+    }
+    send_message2(message)
 
     # send grid, words, coordinates, and times to frontend via socket
     message = {

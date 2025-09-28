@@ -2,12 +2,13 @@ from websocket_server import WebsocketServer
 import threading
 import json
 
-server = WebsocketServer(host="0.0.0.0", port=8765)
+server = WebsocketServer(host="0.0.0.0", port=8766)
 clients = []
 
 def new_client(client, server):
     print(f"New client connected: {client['id']}")
     clients.append(client)
+    send_message("Hi")
 
 def client_left(client, server):
     print(f"Client disconnected: {client['id']}")
@@ -17,10 +18,19 @@ def send_message(message):
     for client in clients:
         server.send_message(client, json.dumps(message))
 
+def message_received(client, server, message):
+    print(f"Received message from client")
+    global ready 
+    ready = True
+
 server.set_fn_new_client(new_client)
 server.set_fn_client_left(client_left)
+server.set_fn_message_received(message_received)
+
 
 threading.Thread(target=server.run_forever, daemon=True).start()
+
+ready = False
 
 message = {
     "board": [
@@ -69,6 +79,12 @@ message = {
     ]
 }
 
+def message_received(client, server, message):
+    print(f"Received message from client")
+    global ready
+    ready = True
+
 while True:
-    text = input("Enter a message to send: ")
+    while not ready:
+        pass
     send_message(message)
