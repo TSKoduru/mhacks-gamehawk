@@ -5,6 +5,9 @@ import numpy as np
 import time
 import easyocr
 
+# import solver logic
+from solver import load_trie, find_words
+
 def find_lonelyscreen_window():
     windows = gw.getWindowsWithTitle('LonelyScreen')
     if not windows:
@@ -49,27 +52,16 @@ def extract_board_letters(img, grid_size=4):
     """
     Takes a screenshot of the Word Hunt board, runs OCR, 
     and returns a grid of recognized letters.
-    
-    Args:
-        image_path (str): Path to the screenshot image.
-        grid_size (int): Number of cells per row/col (default=4 for Word Hunt).
-        
-    Returns:
-        list[list[str]]: grid_size x grid_size grid of letters.
     """
-
-    # Preprocess: convert to grayscale and threshold
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
 
-    # Assume the board is roughly square in the center — crop dynamically if needed
     h, w = thresh.shape
     board_size = min(h, w)
     start_x = (w - board_size) // 2
     start_y = (h - board_size) // 2
     board = thresh[start_y:start_y+board_size, start_x:start_x+board_size]
 
-    # Divide into grid
     cell_h, cell_w = board.shape[0] // grid_size, board.shape[1] // grid_size
 
     letters = []
@@ -77,12 +69,8 @@ def extract_board_letters(img, grid_size=4):
         row = []
         for c in range(grid_size):
             cell = board[r*cell_h:(r+1)*cell_h, c*cell_w:(c+1)*cell_w]
-
-            # Optional: pad & clean cell for better OCR
-            # show cell
             cell = cv2.bitwise_not(cell)
             cell = cv2.resize(cell, (200, 200), interpolation=cv2.INTER_LINEAR)
-            # crop border
             border = 20
             cell = cell[border:-border, border:-border]
             cv2.imshow("cell", cell)
@@ -96,7 +84,6 @@ def extract_board_letters(img, grid_size=4):
     return letters
 
 def main():
-    # wait for space bar press
     print("Press space bar to start game...")
     while True:
         if cv2.waitKey(1) & 0xFF == ord(' '):
@@ -108,7 +95,6 @@ def main():
     # receive ack from rpi 
     # TODO
 
-    # take screenshot
     window = find_lonelyscreen_window()
     if window is None:
         return
@@ -116,18 +102,20 @@ def main():
     activate_and_maximize_window(window)
     img = capture_fullscreen()
 
-    # detect 
     grid = extract_board_letters(img)
 
+    # ---------------------------
     # find words and coordinates and estimate times
-    # TODO
+    # ---------------------------
+    grid = [[ch.lower() for ch in row] for row in grid] # algo needs lowercase
+    trie = load_trie("./trie.pkl")
+    results = find_words(grid, trie)
 
     # send grid, words, coordinates to rpi via socket
     # TODO
 
     # send grid, words, coordinates, and times to frontend via socket
     # TODO
-
 
 
 if __name__ == "__main__":
