@@ -1,12 +1,14 @@
 import { motion } from 'motion/react';
-import { CheckCircle, Clock, Play } from 'lucide-react';
+import { CheckCircle, Clock, Play, Info } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 export interface Word {
   word: string;
   coordinates: number[][];
   duration: number; // seconds to highlight
   status: 'pending' | 'playing' | 'completed';
+  definition: string; // definition of the word
 }
 
 interface WordListProps {
@@ -17,7 +19,8 @@ interface WordListProps {
 
 export function WordList({ words, currentWordIndex, timeRemaining }: WordListProps) {
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/30 shadow-2xl shadow-indigo-500/20 p-6 max-w-md w-full">
+    <TooltipProvider>
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/30 shadow-2xl shadow-indigo-500/20 p-6 max-w-md w-full">
       <h2 className="mb-4 flex items-center gap-2 text-indigo-700">
         <Play className="w-5 h-5 text-indigo-600" />
         Word Hunt Progress
@@ -36,10 +39,27 @@ export function WordList({ words, currentWordIndex, timeRemaining }: WordListPro
                 : 'bg-white/60 border-gray-200 hover:bg-white/80'
               }
             `}
-            transition={{ delay: index * 0.1 }}
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium">{wordData.word.toUpperCase()}</span>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-help">
+                      <span className="font-medium">{wordData.word.toUpperCase()}</span>
+                      <Info className="w-3 h-3 text-gray-400 hover:text-indigo-600 transition-colors" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    side="left" 
+                    className="max-w-xs bg-white/95 backdrop-blur-sm border border-indigo-200 shadow-lg"
+                  >
+                    <div className="p-2">
+                      <p className="font-medium text-indigo-800">{wordData.word.toUpperCase()}</p>
+                      <p className="text-sm text-gray-700 mt-1">{wordData.definition}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <div className="flex items-center gap-2">
                 {wordData.status === 'completed' && (
                   <CheckCircle className="w-4 h-4 text-green-600" />
@@ -102,6 +122,7 @@ export function WordList({ words, currentWordIndex, timeRemaining }: WordListPro
           />
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
