@@ -177,10 +177,10 @@ def main():
     print("in main")
     while not clients2:
         pass
-    print("Press space bar to start game...")
+    print("Press ~ to start game...")
     
     # Wait for spacebar press before continuing
-    keyboard.wait("space")
+    keyboard.wait("~")
 
     # send socket message to rpi 
     message = "start"
@@ -191,7 +191,7 @@ def main():
         pass
 
     # allow time to hit the start
-    time.sleep(3)
+    time.sleep(1)
     
     window = find_lonelyscreen_window()
     if window is None:

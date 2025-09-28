@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 Position = Tuple[int, int]
 WordResult = Dict[str, List[Position]]
-SOLVER_NUMWORDS_LIMIT = 30
+SOLVER_NUMWORDS_LIMIT = 25
 
 def get_neighbors(row: int, col: int, num_rows=4, num_cols=4) -> List[Position]:
     return [
@@ -56,6 +56,28 @@ def dfs_worker(args):
     return results, paths
 
 def find_words(board: List[List[str]], trie: dict) -> List[WordResult]:
+    from math import inf
+
+    def manhattan(p1: Tuple[int, int], p2: Tuple[int, int]) -> int:
+        return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+    def sort_short_words_by_proximity(words: List[str], paths: Dict[str, List[Position]]) -> List[str]:
+        if not words:
+            return []
+
+        remaining = set(words)
+        current = next(iter(remaining))  # start with any word
+        remaining.remove(current)
+        result = [current]
+
+        while remaining:
+            last_pos = paths[current][-1]
+            current = min(remaining, key=lambda w: manhattan(last_pos, paths[w][0]))
+            remaining.remove(current)
+            result.append(current)
+
+        return result
+
     results = set()
     paths = {}
     board_letters = {ch for row in board for ch in row}
@@ -71,10 +93,25 @@ def find_words(board: List[List[str]], trie: dict) -> List[WordResult]:
             results.update(rset)
             paths.update(pset)
 
+    # Split into long and short words
+    long_words = [w for w in results if len(w) > 4]
+    short_words = [w for w in results if len(w) <= 4]
+
+    # Sort long words by length descending, then lex
+    sorted_long = sorted(long_words, key=lambda w: (-len(w), w))
+
+    # Sort short words by proximity of path endpoints
+    sorted_short = sort_short_words_by_proximity(short_words, paths)
+
+    # Combine
+    final_sorted = sorted_long + sorted_short
+    limited = final_sorted[:min(len(final_sorted), SOLVER_NUMWORDS_LIMIT)]
+
     return [
         {"word": word, "coordinates": paths[word], "duration": max(3, len(word)), "status": "pending"}
-        for word in sorted(results, key=lambda w: (-len(w), w))
-    ][:min(len(results), SOLVER_NUMWORDS_LIMIT)] # limit to top 30 results for speed, change as needed
+        for word in limited
+    ]
+
 
 def load_trie(filepath: str) -> dict:
     with open(filepath, "rb") as f:
