@@ -15,7 +15,7 @@ BAUDRATE = 115200
 CELL_SIZE = 13.6  # mm
 PRESS_Z = 0
 REST_Z = 3
-DELAY = 0.3
+DELAY = 0.1
 START_LOCATION = (2, 2)
 
 # --------------------------
@@ -39,7 +39,7 @@ def play_path(ser, path: List[Tuple[int, int]]):
         print(">> Empty path, nothing to play.")
         return
 
-    send_gcode(ser, f"G1 Z{REST_Z} F1000")
+    send_gcode(ser, f"G1 Z{REST_Z} F2000")
     max_row = 3  # For 4x4 grid
 
     print(f">> Playing path with {len(path)} points...")
@@ -47,16 +47,16 @@ def play_path(ser, path: List[Tuple[int, int]]):
     first_row, first_col = path[0]
     x0 = first_col * CELL_SIZE
     y0 = (max_row - first_row) * CELL_SIZE
-    send_gcode(ser, f"G1 X{x0:.2f} Y{y0:.2f} F3000")
+    send_gcode(ser, f"G1 X{x0:.2f} Y{y0:.2f} F6000")
 
-    send_gcode(ser, f"G1 Z{PRESS_Z} F1000")
+    send_gcode(ser, f"G1 Z{PRESS_Z} F2000")
 
     for row, col in path[1:]:
         x = col * CELL_SIZE
         y = (max_row - row) * CELL_SIZE
-        send_gcode(ser, f"G1 X{x:.2f} Y{y:.2f} F3000")
+        send_gcode(ser, f"G1 X{x:.2f} Y{y:.2f} F6000")
 
-    send_gcode(ser, f"G1 Z{REST_Z} F1000")
+    send_gcode(ser, f"G1 Z{REST_Z} F2000")
     print("✅ Path playback complete.")
 
 # --------------------------
