@@ -1,13 +1,19 @@
-from picamera2 import Picamera2
-import time
+import cv2
 
-picam2 = Picamera2()
-picam2.configure(picam2.create_still_configuration())
+# Open the default camera (usually /dev/video0)
+cap = cv2.VideoCapture(0)
 
-picam2.start()
-time.sleep(2)  # Give the sensor time to adjust
+if not cap.isOpened():
+    raise IOError("Cannot open webcam")
 
-picam2.capture_file("image.jpg")
-print("Photo saved as image.jpg")
+# Read one frame
+ret, frame = cap.read()
 
-picam2.close()
+if ret:
+    # Save the frame as an image
+    cv2.imwrite("usb_cam_capture.jpg", frame)
+    print("Image saved as usb_cam_capture.jpg")
+else:
+    print("Failed to capture image")
+
+cap.release()
