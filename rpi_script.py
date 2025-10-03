@@ -1,14 +1,14 @@
-import websocket
-import serial
-import time
-from typing import Tuple, List
 import json
 import signal
+import time
+from typing import Tuple, List
 import sys
-
-# --------------------------
-# CONFIGURATION
-# --------------------------
+from solver import load_trie, find_words
+trie = load_trie("./trie.pkl")
+import websocket
+import serial
+import numpy as np
+from memryx import AsyncAccl
 
 PORT = "/dev/ttyUSB0"
 BAUDRATE = 115200
@@ -18,14 +18,10 @@ REST_Z = 3
 DELAY = 0.25
 START_LOCATION = (2.5, 1.5)
 
-# --------------------------
-# WebSocket debug trace
-# --------------------------
-websocket.enableTrace(True)
+DFP_PATH = "models/yolo_ocr_pipeline.dfp"  # compiled pipeline
+accl = AsyncAccl(DFP_PATH)
 
-# --------------------------
-# G-code helpers
-# --------------------------
+websocket.enableTrace(True)
 def send_gcode(ser, command: str, wait: float = DELAY):
     print(f"> {command}")
     ser.write((command + "\n").encode())
@@ -40,7 +36,7 @@ def play_path(ser, path: List[Tuple[int, int]]):
         return
 
     send_gcode(ser, f"G1 Z{REST_Z} F2000")
-    max_row = 3  # For 4x4 grid
+    max_row = 3 
 
     print(f">> Playing path with {len(path)} points...")
 
@@ -60,9 +56,6 @@ def play_path(ser, path: List[Tuple[int, int]]):
     send_gcode(ser, f"G1 Z{REST_Z} F2000")
     print("✅ Path playback complete.")
 
-# --------------------------
-# Graceful shutdown handler
-# --------------------------
 def exit_gracefully(sig, frame):
     print("\n🛑 Exiting gracefully...")
     try:
@@ -70,15 +63,26 @@ def exit_gracefully(sig, frame):
             ws.close()
         if ser:
             ser.close()
+        if accl:
+            accl.shutdown()
     except:
         pass
     sys.exit(0)
 
 signal.signal(signal.SIGINT, exit_gracefully)
 
-# --------------------------
-# WebSocket callbacks
-# --------------------------
+def extract_board_letters(inp, grid_size=4):
+    inp_proc = np.transpose(inp.astype(np.float32)/255.0, (2,0,1))[None, ...]  # NCHW
+    results = []
+    def output_processor(*logits):
+        class_ids = logits[0].reshape((grid_size, grid_size))
+        letters = [[chr(ord("A")+cid) for cid in row] for row in class_ids]
+        results.append(letters)
+    accl.connect_input(lambda: (inp_proc,))
+    accl.connect_output(output_processor)
+    accl.wait()
+    return results[0]
+
 def on_message(ws, message):
     print(f"Received from server: {message}")
     try:
@@ -87,9 +91,16 @@ def on_message(ws, message):
             play_path(ser, [START_LOCATION])
             ws.send("ack")
         else:
-            data = json.loads(message)
-            results = data.get("words", [])
-            print(f">> Received {len(results)} words to play")
+            inp = np.array(json.loads(message), dtype=np.uint8)
+            letters = extract_board_letters(inp)
+            print(">> Board letters:")
+            for row in letters:
+                print("   " + " ".join(row))
+
+            results = find_words(letters, trie)
+            print(f">> Found {len(results)} words:")
+            board_message = {"board": letters, "words": results}
+            ws.send(json.dumps(board_message))
 
             for word_data in results:
                 coords = word_data.get("coordinates", [])
@@ -99,8 +110,6 @@ def on_message(ws, message):
                     time.sleep(0.5)
                 else:
                     print(">> Skipping word with no coordinates.")
-            
-            # Send to next start position to save time
             send_gcode(ser, f"G1 X{START_LOCATION[0]} F2000")
             send_gcode(ser, f"G1 Y{START_LOCATION[1]} F2000")
             send_gcode(ser, f"G1 Z{REST_Z} F2000")
@@ -117,9 +126,6 @@ def on_error(ws, error):
     print(f"⚠️ WebSocket error: {error}")
     exit_gracefully(None, None)
 
-# --------------------------
-# Main
-# --------------------------
 if __name__ == "__main__":
     print("Connecting to printer...")
     ser = serial.Serial(PORT, BAUDRATE, timeout=2)

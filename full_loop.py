@@ -3,18 +3,15 @@ import mss
 import cv2
 import numpy as np
 import time
-import easyocr
 import keyboard 
 import win32gui
 import win32con
 import win32com.client
-
+import memryx
 # import solver logic
 from solver import load_trie, find_words
 ready= False
 
-# Define trie up here so everything can use it and its only loaded once
-trie = load_trie("./trie.pkl")
 
 def find_lonelyscreen_window():
     windows = gw.getWindowsWithTitle('LonelyScreen')
@@ -50,54 +47,22 @@ def capture_fullscreen():
         img_bgr = img_bgr[896:150+1108, 1062:150+1264]
         return img_bgr
 
-reader = easyocr.Reader(['en'], gpu=False)
-
-def clean_letter(text):
-    if not text:
-        return "I"
-    text = text.upper()[0]  # take first char
-    corrections = {
-        "0": "O",
-        "1": "I",
-        "5": "S",
-        "8": "B"
-    }
-    return corrections.get(text, text if text.isalpha() else "?")
-
-def extract_board_letters(img, grid_size=4):
+def send_img_to_pi(img):
     """
-    Takes a screenshot of the Word Hunt board, runs OCR, 
-    and returns a grid of recognized letters.
+    Input: BGR board screenshot
+    Output:rpi handles it
     """
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
 
-    h, w = thresh.shape
-    board_size = min(h, w)
-    start_x = (w - board_size) // 2
-    start_y = (h - board_size) // 2
-    board = thresh[start_y:start_y+board_size, start_x:start_x+board_size]
+    # preprocessing so we can run the yolo model on rpi after sending thorugh scoket
+    inp = cv2.resize(img, (640, 640))          
+    inp = cv2.cvtColor(inp, cv2.COLOR_BGR2RGB) 
+    inp = inp.astype(np.float32) / 255.0  
+    inp = np.transpose(inp, (2,0,1))
+    inp = np.expand_dims(inp, 0) 
 
-    cell_h, cell_w = board.shape[0] // grid_size, board.shape[1] // grid_size
 
-    letters = []
-    for r in range(grid_size):
-        row = []
-        for c in range(grid_size):
-            cell = board[r*cell_h:(r+1)*cell_h, c*cell_w:(c+1)*cell_w]
-            cell = cv2.bitwise_not(cell)
-            cell = cv2.resize(cell, (200, 200), interpolation=cv2.INTER_LINEAR)
-            border = 20
-            cell = cell[border:-border, border:-border]
-            # cv2.imshow("cell", cell)
-            # cv2.waitKey(0)
-            
-            results = reader.readtext(cell)
-            char = clean_letter(results[0][1] if results else "")
-            row.append(char)
-        letters.append(row)
-
-    return letters
+    # no output, send raw image data to pi and compute shit on that end
+    send_message2(inp)
 
 from websocket_server import WebsocketServer
 import threading
@@ -159,6 +124,8 @@ def message_received(client, server, message):
     print(f"Received message from client")
     global ready 
     ready = True
+    if message != "ack":
+        send_message(message) # send to webserver
 
 server.set_fn_new_client(new_client)
 server.set_fn_client_left(client_left)
@@ -199,29 +166,12 @@ def main():
 
     activate_and_maximize_window(window)
     img = capture_fullscreen()
-    grid = extract_board_letters(img)
+    send_img_to_pi(img)
 
-    # ---------------------------
-    # find words and coordinates and estimate times
-    # ---------------------------
-    grid = [[ch.lower() for ch in row] for row in grid]  # algo needs lowercase
-    results = find_words(grid, trie)
-    print(grid)
-    print(f"Found {len(results)} words")
-    print(results[:10])
-    # send words, coordinates to rpi via socket
-    message = {
-        "words": results
-    }
-    send_message2(message)
-
-    # send grid, words, coordinates, and times to frontend via socket
-    # message = {
-    #     "board": grid,
-    #     "words": results
-    # }
-    # send_message(message)
-
+    # wait for rpi to send back board and words
+    ready = False
+    while(not ready):
+        pass
 
 if __name__ == "__main__":
     while True:

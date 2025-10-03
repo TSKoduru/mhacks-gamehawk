@@ -1,0 +1,1 @@
+mx_nc   -m ./models/yoloactual.onnx ./models/ocr_model.h5   -is "1,3,640,640" "AUTO"   --dfp_fname ./models/yolo_ocr_pipeline.dfp   --extensions Resize   --autocrop
